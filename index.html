@@ -412,8 +412,8 @@ const ZONES = {
  dragonbarrow:V([[1230,1140],[1290,1110],[1340,1150],[1360,1230],[1330,1300],[1280,1330],[1240,1290],[1230,1210]]),
  mountaintops:V([[710,470],[740,340],[800,240],[880,170],[1000,175],[1120,160],[1230,180],[1350,210],[1420,150],[1500,165],[1570,240],[1650,340],[1690,440],[1700,560],[1680,670],[1640,760],[1570,830],[1490,890],[1390,940],[1290,970],[1200,1000],[1130,985],[1080,930],[1040,870],[1010,810],[1000,740],[960,670],[900,590],[820,560],[760,520]]),
  snowfield:V([[1000,380],[1080,330],[1180,350],[1260,340],[1340,380],[1420,430],[1480,520],[1420,610],[1330,630],[1240,610],[1170,590],[1110,570],[1060,500],[1010,440]]),
- haligtree:V([[1360,230],[1440,220],[1500,280],[1470,340],[1390,330]]),
- farum:V([[1110,130],[1170,110],[1230,140],[1250,200],[1200,250],[1130,250],[1100,190]]),
+ haligtree:V([[1135,110],[1255,105],[1260,275],[1140,275]]),
+ farum:V([[1385,440],[1495,440],[1505,590],[1390,590]]),
  leyndell:V([[800,610],[900,590],[960,620],[960,720],[900,740],[820,730]]),
  ashen:V([[910,740],[1030,725],[1070,780],[1040,850],[970,880],[920,830]])
 };
@@ -424,7 +424,7 @@ const hueOf = r => HUE[r.id] || "#d9b25a";
 const centroid = pts => { let x=0,y=0; pts.forEach(p=>{x+=p[0];y+=p[1];}); return [x/pts.length/MAPW*100, y/pts.length/IMGH*100]; };
 // label anchors where the polygon centre would collide with a neighbour
 const pc=(x,y)=>[x/19.72,y/18.76];
-const LABEL = {mountaintops:pc(1540,740), snowfield:pc(1250,480), leyndell:pc(870,560), ashen:pc(990,880), limgrave:pc(850,1470), weeping:pc(800,1730), caelid:pc(1200,1430), dragonbarrow:pc(1300,1220), stormveil:pc(560,1330), altus:pc(740,600), gelmir:pc(480,600), liurnia:pc(430,960), farum:pc(1175,190), haligtree:pc(1430,290)};
+const LABEL = {mountaintops:pc(1540,740), snowfield:pc(1250,480), leyndell:pc(870,560), ashen:pc(990,880), limgrave:pc(850,1470), weeping:pc(800,1730), caelid:pc(1200,1430), dragonbarrow:pc(1300,1220), stormveil:pc(560,1330), altus:pc(740,600), gelmir:pc(480,600), liurnia:pc(430,960), farum:pc(1445,410), haligtree:pc(1195,95)};
 const bposOf = r => bpos[r.id] || LABEL[r.id] || (ZONES[r.id] ? centroid(ZONES[r.id]) : PIN0[r.id]);
 
 let selItem = null, selR = null, filterT = "all", search = "", moving = false, placing = null;
@@ -547,45 +547,26 @@ function drawZones(){
   const pts = selR && ZONES[selR.id];
   col.style.clipPath = pts ? "polygon("+pts.map(p=>p[0]+"px "+p[1]+"px").join(",")+")" : "polygon(0 0,0 0,0 0)";
 }
-// best-guess spots (% of image) for items with a known place; NOT exact, re-pin to fix
-const GUESS = {
- "Meet Melina at Gatefront -> get Torrent":pc(760,1440),
- "Church of Elleh: Spirit Calling Bell (Renna)":pc(830,1480),
- "Dectus Medallion (Left): chest in Fort Haight tower, Mistwood":pc(960,1470),
- "Tree Sentinel (optional, come back later)":pc(740,1420),
- "Margit, the Fell Omen":pc(680,1350),
- "Blaidd (Mistwood Ruins)":pc(920,1400),
- "Patches (Murkwater Cave)":pc(850,1400),
- "Roderika (Roundtable Hold)":pc(640,1320),
- "Boc the Seamster":pc(800,1470),
- "Leonine Misbegotten (Castle Morne)":pc(880,1680),
- "Erdtree Avatar":pc(790,1640),
- "Irina / Edgar (Castle Morne)":pc(770,1655),
- "Godrick the Grafted":pc(670,1350),
- "Nepheli Loux (castle)":pc(620,1345),
- "Starscourge Radahn (Redmane Castle festival)":pc(1150,1360),
- "Rogier (Roundtable Hold)":pc(640,1335),
- "Red Wolf of Radagon (Raya Lucaria)":pc(400,770),
- "Rennala, Queen of the Full Moon":pc(350,790),
- "Royal Knight Loretta (Caria Manor)":pc(560,830),
- "Draconic Tree Sentinel (Capital Outskirts)":pc(800,760),
- "Rykard, Lord of Blasphemy":pc(440,600),
- "Greyoll (optional)":pc(1300,1200),
- "Sir Gideon Ofnir (Ashen Capital)":pc(990,790),
- "Godfrey, First Elden Lord (Golden Shade)":pc(850,690),
- "Morgott, the Omen King":pc(900,650),
- "Commander Niall (Castle Sol)":pc(1500,520),
- "Fire Giant":pc(1330,740),
- "Ordina, Liturgical Town":pc(1180,380)
-};
-// where to draw an item: confirmed pin > guess > small ring around the region badge
+// real positions (% of map image) from datamined game coordinates (graces, bosses, NPC spots, seeds/tears);
+// an item can have several spots. Items with no entry (underground, DLC, some quests) have no pin.
+const LOC = {"Meet Melina at Gatefront -> get Torrent": [[39.53, 76.47]], "Church of Elleh: Spirit Calling Bell (Renna)": [[38.9, 79.68]], "Collect first Golden Seeds + Sacred Tears": [[37.13, 75.72], [50.24, 80.61], [44.29, 92.4], [49.37, 73.82]], "Dectus Medallion (Left): chest in Fort Haight tower, Mistwood": [[48.85, 81.09]], "Tree Sentinel (optional, come back later)": [[39.26, 80.05]], "Margit, the Fell Omen": [[35.13, 75.32]], "Blaidd (Mistwood Ruins)": [[46.92, 78.82]], "Patches (Murkwater Cave)": [[42.58, 77.1]], "Boc the Seamster": [[31.3, 69.91]], "Roderika (Roundtable Hold)": [[36.83, 74.64]], "Leonine Misbegotten (Castle Morne)": [[41.78, 98.1]], "Erdtree Avatar": [[41.54, 88.97]], "Irina / Edgar (Castle Morne)": [[46.5, 86.78]], "Godrick the Grafted": [[32.81, 71.19]], "Rogier (Roundtable Hold)": [[32.39, 73.12]], "Nepheli Loux (castle)": [[33.3, 72.75]], "Academy Glintstone Key": [[17.38, 54.8], [18.86, 53.58]], "Red Wolf of Radagon (Raya Lucaria)": [[20.63, 55.01]], "Rennala, Queen of the Full Moon": [[19.76, 52.77]], "Royal Knight Loretta (Caria Manor)": [[19.86, 39.16]], "Ranni the Witch (Ranni's Rise)": [[16.55, 40.14]], "Sorceress Sellen / Jerren": [[45.06, 80.37]], "Haligtree Secret Medallion (Right): Village of the Albinaurics, hit pot Albus": [[18.0, 64.45]], "Rya: Volcano Manor Invitation": [[26.22, 62.83]], "Use both Dectus halves at Grand Lift of Dectus (Liurnia -> Altus)": [[28.24, 41.0]], "Goldmask / Corhyn": [[45.16, 41.08], [34.69, 28.46], [64.14, 23.52], [32.64, 35.42]], "Draconic Tree Sentinel (Capital Outskirts)": [[47.9, 34.05]], "Volcano Manor: Tanith, Rya, Patches": [[23.51, 31.1]], "Bernahl + Fortified Manor summon fights (Varagram, Willem)": [[44.9, 39.04], [73.65, 25.39], [72.28, 27.3], [23.21, 31.41]], "Complete all Volcano Manor contracts": [[36.88, 81.39], [38.75, 70.74], [30.48, 31.75], [61.77, 22.12]], "Rykard, Lord of Blasphemy": [[24.08, 31.75]], "Gurranq, Beast Clergyman (Deathroot)": [[63.54, 60.27]], "Millicent, Gowry, Needle Knight Leda": [[60.4, 74.31], [60.58, 9.16], [25.76, 39.52], [28.47, 36.13], [37.55, 27.93], [38.97, 26.46], [47.88, 33.44], [57.0, 74.6], [58.33, 34.59], [61.49, 73.5], [64.96, 80.4], [64.0, 23.47]], "Starscourge Radahn (Redmane Castle festival)": [[66.32, 75.3]], "Knight Bernahl (Warmaster's Shack)": [[39.48, 73.71]], "Dectus Medallion (Right): Fort Faroth": [[63.2, 70.57]], "Greyoll (optional)": [[65.6, 64.99]], "Sir Gideon Ofnir (Ashen Capital)": [[46.37, 40.25]], "Godfrey, First Elden Lord (Golden Shade)": [[46.38, 40.24]], "Morgott, the Omen King": [[48.51, 41.02]], "Goldmask + Brother Corhyn questline": [[45.16, 41.08], [34.69, 28.46], [64.14, 23.52], [32.64, 35.42]], "Rold Medallion (Melina, after Morgott) -> Grand Lift of Rold": [[58.48, 32.79]], "Forge of the Giants: do NOT burn the Erdtree until quests are done": [[72.03, 31.9]], "Commander Niall (Castle Sol)": [[64.88, 17.79]], "Fire Giant": [[67.9, 33.88]], "Three Fingers (meet) — needed for Shabriri summon; frenzy needs Miquella's Needle if not wanted": [[48.58, 36.81]], "Haligtree Secret Medallion Left: Castle Sol roof, after Niall": [[64.93, 17.93]], "Hoist Secret Medallion at bottom of Grand Lift of Rold": [[58.48, 32.79]], "Millicent: final steps in Elphael": [[60.57, 9.1]], "Millicent finale (verify steps on wiki)": [[60.57, 9.1]], "Ordina, Liturgical Town": [[56.15, 20.55]], "Loretta, Knight of the Haligtree": [[61.61, 10.49]], "Malenia, Blade of Miquella": [[59.46, 8.59]], "Godskin Duo": [[72.23, 27.09]], "Beast Clergyman (Maliketh)": [[72.95, 26.07]], "Maliketh, the Black Blade": [[74.37, 27.45]], "Godfrey / Hoarah Loux": [[48.19, 40.58]], "Radagon of the Golden Order": [[48.19, 40.58]], "Elden Beast": [[48.19, 40.58]], "Varre / Pureblood Knight's Medal": [[19.45, 58.65], [39.21, 81.12]]};
 function dotPos(o){
-  if (ipos[o.id]) return {p:ipos[o.id], kind:"set"};
-  if (GUESS[o.it.x]) return {p:GUESS[o.it.x], kind:"guess"};
-  const b=bposOf(o.r); if(!b) return null;
-  const rest=ALL.filter(x=>x.r===o.r && !ipos[x.id] && !GUESS[x.it.x]);
-  const k=rest.indexOf(o), n=rest.length, a=(k/n)*Math.PI*2-Math.PI/2, rx=2.4+0.25*n, ry=rx*MAPW/IMGH;
-  return {p:[b[0]+Math.cos(a)*rx, b[1]+Math.sin(a)*ry], kind:"ring"};
+  if (ipos[o.id]) return {pts:[ipos[o.id]], kind:"set"};
+  const l = LOC[o.it.x];
+  return l && l.length ? {pts:l, kind:"data"} : null;
+}
+function ptsBox(pts){
+  const xs=pts.map(p=>p[0]/100*MAPW), ys=pts.map(p=>p[1]/100*IMGH);
+  return {x0:Math.min(...xs), x1:Math.max(...xs), y0:Math.min(...ys), y1:Math.max(...ys)};
+}
+function focusPts(pts){
+  const bx=ptsBox(pts), w=vp.clientWidth, h=vp.clientHeight;
+  let cx=w/2, cy=h/2;
+  if ($("detail").classList.contains("open")){ if(isMobile()){ cy=h*0.19; } else { cx=(w-Math.min(390,w))/2; } }
+  const bw=Math.max(bx.x1-bx.x0,80), bh=Math.max(bx.y1-bx.y0,80);
+  const kx=(cx*1.6)/bw, ky=(cy*1.6)/bh;
+  S=Math.max(fitS*1.3, Math.min(5, fitS*2.6, kx, ky));
+  TX=cx-((bx.x0+bx.x1)/2)*S; TY=cy-((bx.y0+bx.y1)/2)*S; apply(true);
 }
 function drawDots(){
   const L=$("dots"); L.innerHTML="";
@@ -593,16 +574,17 @@ function drawDots(){
   ALL.forEach(o=>{
     if (selR!==o.r) return;                                // pins only for the selected zone
     const dp=dotPos(o); if(!dp) return;
-    const p=dp.p, sel=true;
     if (filterT!=="all" && o.it.t!==filterT) return;
     if (!match(o)) return;
-    const el=document.createElement("div");
-    el.className="dot "+o.it.t+(done[o.id]?" found":"")+(dp.kind!=="set"?" approx":"")+(sel?" big":"")+(selItem===o.id?" hl":"");
-    el.textContent=done[o.id]?"✓":GL[o.it.t];
-    el.style.left=(p[0]/100*MAPW)+"px"; el.style.top=(p[1]/100*IMGH)+"px";
-    el.title=o.it.x;
-    el.onclick=ev=>{ if(placing||moved>4) return; ev.stopPropagation(); selItem=o.id; openIt.add(o.id); drawDetail(); drawDots(); const row=document.querySelector(`[data-it="${CSS.escape(o.id)}"]`); if(row) row.scrollIntoView({block:"center"}); };
-    L.appendChild(el);
+    dp.pts.forEach(p=>{
+      const el=document.createElement("div");
+      el.className="dot big "+o.it.t+(done[o.id]?" found":"")+(selItem===o.id?" hl":"");
+      el.textContent=done[o.id]?"\u2713":GL[o.it.t];
+      el.style.left=(p[0]/100*MAPW)+"px"; el.style.top=(p[1]/100*IMGH)+"px";
+      el.title=o.it.x;
+      el.onclick=ev=>{ if(placing||moved>4) return; ev.stopPropagation(); selItem=o.id; openIt.add(o.id); drawDetail(); drawDots(); const row=document.querySelector(`[data-it="${CSS.escape(o.id)}"]`); if(row) row.scrollIntoView({block:"center"}); };
+      L.appendChild(el);
+    });
   });
 }
 
@@ -626,9 +608,9 @@ function drawDetail(){
   $("fl").querySelectorAll("button").forEach(b=>b.onclick=()=>{ filterT=b.dataset.f; drawDetail(); drawDots(); });
   const warn=(r.id==="mountaintops"||r.id==="farum")?`<div class="warn">Before the Forge of the Giants / Maliketh: finish Ranni, Millicent, Varre, Volcano Manor, Fia, Goldmask and Sellen quests.</div>`:"";
   const rows=all.filter(o=>(filterT==="all"||o.it.t===filterT)&&match(o)).map(o=>{
-    const w=whereParts(o.it), open=openIt.has(o.id), pinned=!!ipos[o.id], dk=(dotPos(o)||{}).kind;
+    const w=whereParts(o.it), open=openIt.has(o.id), pinned=!!ipos[o.id], dk=(dotPos(o)||{}).kind||"none";
     return `<div class="it${done[o.id]?" done":""}${selItem===o.id?" hl":""}" data-it="${esc(o.id)}">
-      <div class="ih"><input type="checkbox" ${done[o.id]?"checked":""}><span class="t"><span class="gl ${o.it.t}">${GL[o.it.t]}</span>${esc(o.it.x)}${pinned?' <span class="pinned">● pinned</span>':(dk==="guess"?' <span class="pinned" style="color:var(--muted)">~ approx. spot</span>':' <span class="pinned" style="color:var(--muted)">~ near region</span>')}</span></div>
+      <div class="ih"><input type="checkbox" ${done[o.id]?"checked":""}><span class="t"><span class="gl ${o.it.t}">${GL[o.it.t]}</span>${esc(o.it.x)}${dk==="set"?' <span class="pinned">\u25CF pinned by you</span>':(dk==="data"?' <span class="pinned">\u25CF on map</span>':' <span class="pinned" style="color:var(--muted)">no map pin</span>')}</span></div>
       ${open?`<div class="ib">${o.it.n?`<div class="note">${esc(o.it.n)}</div>`:""}
         ${w.txt?`<div><b>Where:</b> ${esc(w.txt)}${w.unv?" <em>(not wiki-checked)</em>":""}</div>`:`<div><em>Location text not added yet.</em></div>`}
         <div class="act"><button data-a="pin">${pinned?"Re-pin on map":"Pin on map"}</button>${pinned?'<button data-a="unpin">Remove pin</button>':""}<a href="${q(o.it.x)}" target="_blank" rel="noopener">search</a></div></div>`:""}
@@ -641,7 +623,7 @@ function drawDetail(){
     row.querySelector(".t").onclick=()=>{
       if(openIt.has(id)){ openIt.delete(id); if(selItem===id) selItem=null; } else { openIt.add(id); selItem=id; }
       drawDetail(); drawDots();
-      const dp=dotPos(byId[id]); if(dp&&selItem===id) centerOn(dp.p[0],dp.p[1],Math.max(S,fitS*2.6));
+      const dp=dotPos(byId[id]); if(dp&&selItem===id) focusPts(dp.pts);
     };
     const pb=row.querySelector('[data-a="pin"]'); if(pb) pb.onclick=()=>startPlacing(id);
     const ub=row.querySelector('[data-a="unpin"]'); if(ub) ub.onclick=()=>{ delete ipos[id]; saveI(); drawDetail(); drawDots(); };
