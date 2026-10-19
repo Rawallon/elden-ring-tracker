@@ -649,7 +649,7 @@ function drawGuide(r){
     const text=st[0], key=st[1];
     const o=key?ALL.find(x=>x.r===r&&x.it.x===key):null;
     const id=o?o.id:"gs:"+r.id+":"+i, dn=!!done[id];
-    const wr=(WHY[r.id]||[]).find(w=>text.startsWith(w[0])); const why=wr?`<span class="gw"><b>Context:</b> ${esc(wr[1])}</span>`:"";
+    const wr=st[2]||((WHY[r.id]||[]).find(w=>text.startsWith(w[0]))||[])[1]; const why=wr?`<span class="gw"><b>Context:</b> ${esc(wr)}</span>`:"";
     html+=`<div class="gstep${dn?" done":""}${o?" linked":""}${o&&selItem===o.id?" hl":""}" data-id="${esc(id)}" data-o="${o?esc(o.id):""}"><input type="checkbox" ${dn?"checked":""}><span class="gt">${o?`<span class="gl ${o.it.t}">${GL[o.it.t]}</span> `:""}${esc(text)}${why}</span></div>`;
   });
   html+=`<div class="it"><span class="note">Based on the Fextralife Game Progress Route (credit: Fextralife wiki), summarised in my own words. Steps with an icon are tied to the checklist and tick together; plain steps are guide-only.</span><div class="act" style="margin-top:8px"><a href="https://eldenring.wiki.fextralife.com/Game_Progress_Route" target="_blank" rel="noopener" style="color:var(--item);font-size:12.5px">Open the full wiki route for the original text ↗</a></div></div>`;
