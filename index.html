@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Elden Ring Progress Map</title>
+<style>
+  :root{
+    --bg:#0f0d0a; --panel:#1a1610; --panel2:#231d14; --line:#3a2f1e;
+    --text:#e8dcc0; --muted:#9a8c6e; --gold:#d4a84b; --boss:#c9503c; --quest:#d4a84b; --item:#5b9bd5; --ok:#6fae5f;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Georgia,"Times New Roman",serif}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:14px;align-items:center;background:var(--panel)}
+  h1{margin:0;font-size:20px;letter-spacing:.06em;color:var(--gold);font-weight:600}
+  .overall{flex:1;min-width:220px}
+  .bar{height:10px;background:#000;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .bar i{display:block;height:100%;background:linear-gradient(90deg,#8a6a22,var(--gold));width:0;transition:width .3s}
+  .overall small{color:var(--muted)}
+  button,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);padding:6px 11px;border-radius:5px;font:inherit;cursor:pointer}
+  button:hover{border-color:var(--gold)}
+  .layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:16px;padding:16px 20px;max-width:1400px;margin:0 auto}
+  @media(max-width:860px){.layout{grid-template-columns:1fr;padding:12px 16px}}
+  .mapwrap{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px}
+  svg{width:100%;height:auto;display:block}
+  .region{cursor:pointer}
+  .region rect{stroke:#5a4a2a;stroke-width:1.5;rx:10;transition:fill .2s}
+  .region:hover rect{stroke:var(--gold)}
+  .region.sel rect{stroke:#fff;stroke-width:3}
+  .region text{pointer-events:none;fill:var(--text);font-size:12px;text-anchor:middle}
+  .region .lvl{fill:var(--muted);font-size:10px}
+  .region .pct{font-size:11px;fill:var(--gold)}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:13px;padding:6px 4px 2px}
+  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;align-self:start;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+  @media(max-width:860px){.panel{position:static;max-height:none}}
+  .panel h2{margin:0 0 2px;color:var(--gold);font-size:19px}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:10px}
+  .filters{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .filters button.on{border-color:var(--gold);color:var(--gold)}
+  ul{list-style:none;margin:0;padding:0}
+  li{display:flex;gap:10px;align-items:flex-start;padding:7px 4px;border-bottom:1px solid var(--line)}
+  li label{cursor:pointer;flex:1}
+  li input{margin-top:4px;accent-color:var(--ok);width:16px;height:16px}
+  li.done label{color:var(--muted);text-decoration:line-through}
+  .tag{font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:9px;border:1px solid;margin-left:6px;vertical-align:middle}
+  .tag.boss{color:var(--boss);border-color:var(--boss)}
+  .tag.quest{color:var(--quest);border-color:var(--quest)}
+  .tag.item{color:var(--item);border-color:var(--item)}
+  .note{display:block;color:var(--muted);font-size:12.5px}
+  .vbar{display:flex;gap:6px;margin-bottom:8px}
+  .vbar button.on{border-color:var(--gold);color:var(--gold)}
+  #stage{position:relative;overflow:hidden;aspect-ratio:1920/1750;border-radius:6px;background:#000}
+  #inner{position:relative;width:100%;aspect-ratio:1920/1851}
+  #inner img{position:absolute;inset:0;width:100%;height:100%;display:block}
+  #pins{position:absolute;inset:0}
+  .pin{position:absolute;transform:translate(-50%,-50%);padding:1px 7px;border-radius:12px;font:600 11px/1.35 Georgia,serif;border:2px solid #e8dcc0;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px #000c;touch-action:none;user-select:none}
+  .pin small{font-weight:400;opacity:.9;margin-left:4px}
+  .pin.sel{border-color:#fff;box-shadow:0 0 0 3px var(--gold)}
+  .editing .pin{cursor:move;outline:2px dashed var(--gold);outline-offset:2px}
+  #nomap{display:none;padding:12px;color:var(--muted)}
+  #side{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
+  #side span{color:var(--muted);font-size:12.5px}
+  #side .pin{position:static;transform:none}
+  .where{display:block;margin-top:3px;font-size:13px;color:#cfc3a4}
+  .where b{color:var(--gold);font-weight:600}
+  .where em{color:var(--muted)}
+  .where a{color:var(--item);font-size:12px;margin-left:6px}
+  .warn{background:#3a1a14;border:1px solid var(--boss);color:#f0c8bf;padding:8px 10px;border-radius:6px;margin:8px 0;font-size:13px}
+  .disclaimer{max-width:1400px;margin:0 auto;padding:0 20px 24px;color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+<header>
+  <h1>ELDEN RING · PROGRESS MAP</h1>
+  <div class="overall">
+    <div class="bar"><i id="obar"></i></div>
+    <small id="otext"></small>
+  </div>
+  <button id="exp">Export</button>
+  <button id="imp">Import</button>
+  <button id="reset">Reset</button>
+</header>
+
+<div class="layout">
+  <div>
+    <div class="mapwrap">
+      <div class="vbar">
+        <button id="vReal">Real map</button>
+        <button id="vSchem">Schematic</button>
+        <button id="vEdit" title="Drag pins to the right spot; saved in this browser">Edit pins</button>
+      </div>
+      <div id="real">
+        <div id="stage"><div id="inner"><img id="mapimg" src="elden-ring-map.jpg" alt="Lands Between map"><div id="pins"></div></div></div>
+        <div id="nomap">Map image not found. Save a map of the Lands Between as <b>elden-ring-map.jpg</b> in the same folder as this file, then reload.</div>
+        <div id="side"></div>
+      </div>
+      <svg id="map" viewBox="0 0 800 600" role="img" aria-label="Stylized Lands Between map"></svg>
+      <div class="legend">
+        <span><span class="dot" style="background:#2a2418"></span>0%</span>
+        <span><span class="dot" style="background:#6b5420"></span>in progress</span>
+        <span><span class="dot" style="background:#3f6a35"></span>complete</span>
+        <span>Stylized map, not to scale. Region number = suggested order.</span>
+      </div>
+    </div>
+  </div>
+  <aside class="panel" id="panel"></aside>
+</div>
+<p class="disclaimer">Levels: RankedBoost ranges where available, otherwise estimated from wiki.gg area tiers; the game ends around lv 120 ±10. Medallions, Great Runes and Erdtree-burn items checked on Fextralife wiki. Ranni, Millicent, Varre, Fia and Sellen step details NOT verified — check a quest walkthrough. Progress is saved in this browser (localStorage). Use Export to back it up.</p>
+
+<script>
+// ---- DATA ----------------------------------------------------------
+// t: boss | quest | item
+const R = [
+ {id:"limgrave", n:1, name:"Limgrave", lvl:"1-20", x:240,y:310,w:230,h:80, items:[
+  {t:"item",x:"Meet Melina at Gatefront -> get Torrent"},
+  {t:"item",x:"Church of Elleh: Spirit Calling Bell (Renna)"},
+  {t:"item",x:"Collect first Golden Seeds + Sacred Tears"},
+  {t:"item",x:"Dectus Medallion (Left): chest in Fort Haight tower, Mistwood"},
+  {t:"boss",x:"Tree Sentinel (optional, come back later)"},
+  {t:"boss",x:"Margit, the Fell Omen",n:"Unlocks Roundtable Hold"},
+  {t:"quest",x:"Blaidd (Mistwood Ruins)",n:"Ties into Ranni's quest"},
+  {t:"quest",x:"Patches (Murkwater Cave)"},
+  {t:"quest",x:"Boc the Seamster"},
+  {t:"quest",x:"Roderika (Roundtable Hold)"},
+ ]},
+ {id:"weeping", n:2, name:"Weeping Peninsula", lvl:"15-30", x:240,y:405,w:150,h:60, items:[
+  {t:"boss",x:"Leonine Misbegotten (Castle Morne)"},
+  {t:"boss",x:"Erdtree Avatar"},
+  {t:"quest",x:"Irina / Edgar (Castle Morne)"},
+ ]},
+ {id:"stormveil", n:3, name:"Stormveil Castle", lvl:"25-35", x:260,y:262,w:110,h:38, items:[
+  {t:"boss",x:"Godrick the Grafted",n:"Godrick's Great Rune"},
+  {t:"quest",x:"Rogier (Roundtable Hold)"},
+  {t:"quest",x:"Nepheli Loux (castle)"},
+ ]},
+ {id:"liurnia", n:4, name:"Liurnia of the Lakes", lvl:"40-50", x:40,y:280,w:190,h:100, items:[
+  {t:"item",x:"Academy Glintstone Key"},
+  {t:"boss",x:"Red Wolf of Radagon (Raya Lucaria)"},
+  {t:"boss",x:"Rennala, Queen of the Full Moon",n:"Great Rune of the Unborn; unlocks respec"},
+  {t:"quest",x:"Rya: Volcano Manor Invitation"},
+  {t:"boss",x:"Royal Knight Loretta (Caria Manor)"},
+  {t:"quest",x:"Ranni the Witch (Ranni's Rise)",n:"Do before burning the Erdtree"},
+  {t:"quest",x:"Sorceress Sellen / Jerren"},
+  {t:"quest",x:"Iji, Hyetta, Blaidd continued"},
+  {t:"item",x:"Haligtree Secret Medallion (Right): Village of the Albinaurics, hit pot Albus",n:"Needed later for Consecrated Snowfield"},
+ ]},
+ {id:"altus", n:6, name:"Altus Plateau", lvl:"60-70", x:240,y:190,w:170,h:70, items:[
+  {t:"item",x:"Use both Dectus halves at Grand Lift of Dectus (Liurnia -> Altus)",n:"Right half is in Fort Faroth, Dragonbarrow"},
+  {t:"boss",x:"Draconic Tree Sentinel (Capital Outskirts)"},
+  {t:"quest",x:"Goldmask / Corhyn"},
+ ]},
+ {id:"gelmir", n:7, name:"Mt. Gelmir + Volcano Manor", lvl:"55-70", x:120,y:190,w:110,h:70, items:[
+  {t:"quest",x:"Volcano Manor: Tanith, Rya, Patches"},
+  {t:"quest",x:"Bernahl + Fortified Manor summon fights (Varagram, Willem)",n:"Wiki: do before burning and before Rykard"},
+  {t:"boss",x:"Rykard, Lord of Blasphemy",n:"Rykard's Great Rune"},
+  {t:"quest",x:"Complete all Volcano Manor contracts"},
+ ]},
+ {id:"caelid", n:5, name:"Caelid", lvl:"50-70", x:500,y:290,w:130,h:80, items:[
+  {t:"quest",x:"Gurranq, Beast Clergyman (Deathroot)"},
+  {t:"quest",x:"Millicent, Gowry, Needle Knight Leda"},
+  {t:"boss",x:"Starscourge Radahn (Redmane Castle festival)",n:"Radahn's Great Rune"},
+  {t:"quest",x:"Bernahl / Iji / Redmane allies"},
+ ]},
+ {id:"dragonbarrow", n:5, name:"Dragonbarrow", lvl:"60-70", x:640,y:290,w:130,h:80, items:[
+  {t:"item",x:"Dectus Medallion (Right): Fort Faroth"},
+  {t:"boss",x:"Greyoll (optional)"},
+ ]},
+ {id:"leyndell", n:8, name:"Leyndell, Royal Capital", lvl:"60-80", x:330,y:100,w:150,h:80, items:[
+  {t:"item",x:"Have 2 Great Runes + talk to Finger Reader Enia (Roundtable) to enter"},
+  {t:"boss",x:"Sir Gideon Ofnir (Erdtree Sanctuary)"},
+  {t:"boss",x:"Godfrey, First Elden Lord (Golden Shade)"},
+  {t:"boss",x:"Morgott, the Omen King",n:"Morgott's Great Rune"},
+  {t:"item",x:"Grab Capital loot before ashening: Bolt of Gransax, Golden Order Principia, Erdtree Bow, Celestial Dew",n:"Lost after Capital burns"},
+  {t:"item",x:"Seedbed Curses (3 spots)",n:"Dung Eater quest"},
+  {t:"quest",x:"Goldmask + Brother Corhyn questline",n:"Needed for Age of Order"},
+  {t:"quest",x:"Nepheli Loux: crown her ruler of Limgrave",n:"Godfrey fight summon"},
+ ]},
+ {id:"mountaintops", n:10, name:"Mountaintops of the Giants", lvl:"90-100", x:500,y:85,w:130,h:70, items:[
+  {t:"item",x:"Rold Medallion (Melina, after Morgott) -> Grand Lift of Rold"},
+  {t:"boss",x:"Commander Niall (Castle Sol)"},
+  {t:"boss",x:"Fire Giant"},
+  {t:"quest",x:"Three Fingers (meet) — needed for Shabriri summon; frenzy needs Miquella's Needle if not wanted",n:"Only if wanted"},
+  {t:"item",x:"Forge of the Giants: do NOT burn the Erdtree until quests are done",n:"Burning teleports you to Farum Azula; can lock Corhyn/Goldmask and Nepheli"},
+ ]},
+ {id:"snowfield", n:10, name:"Consecrated Snowfield", lvl:"100-110", x:640,y:85,w:130,h:70, items:[
+  {t:"item",x:"Haligtree Secret Medallion Left: Castle Sol roof, after Niall",n:"Right half is in Liurnia (Albus pot)"},
+  {t:"item",x:"Hoist Secret Medallion at bottom of Grand Lift of Rold"},
+  {t:"quest",x:"Millicent: final steps in Elphael"},
+  {t:"item",x:"Ordina, Liturgical Town"},
+ ]},
+ {id:"haligtree", n:11, name:"Miquella's Haligtree", lvl:"105-120", x:560,y:15,w:210,h:58, items:[
+  {t:"boss",x:"Loretta, Knight of the Haligtree"},
+  {t:"boss",x:"Malenia, Blade of Miquella",n:"Malenia's Great Rune"},
+  {t:"quest",x:"Millicent finale (verify steps on wiki)"},
+  {t:"quest",x:"Gideon rewards need: Mohgwyn found, Haligtree found, Mohg + Malenia dead"},
+ ]},
+ {id:"farum", n:12, name:"Crumbling Farum Azula", lvl:"95-110", x:330,y:15,w:150,h:58, items:[
+  {t:"boss",x:"Godskin Duo"},
+  {t:"boss",x:"Beast Clergyman (Maliketh)"},
+  {t:"boss",x:"Maliketh, the Black Blade",n:"POINT OF NO RETURN — quests close"},
+ ]},
+ {id:"ashen", n:13, name:"Ashen Capital + Finale", lvl:"110-130", x:150,y:15,w:160,h:58, items:[
+  {t:"boss",x:"Godfrey / Hoarah Loux"},
+  {t:"boss",x:"Radagon of the Golden Order"},
+  {t:"boss",x:"Elden Beast"},
+  {t:"quest",x:"Choose ending / start NG+"},
+ ]},
+ {id:"siofra", n:4, name:"Siofra + Nokron", lvl:"50-60", x:40,y:490,w:120,h:70, items:[
+  {t:"item",x:"Mimic Tear Ashes (chest)"},
+  {t:"boss",x:"Mimic Tear (Nokron)"},
+  {t:"boss",x:"Ancestor Spirit (Siofra River)"},
+  {t:"boss",x:"Regal Ancestor Spirit"},
+ ]},
+ {id:"ainsel", n:4, name:"Ainsel River", lvl:"55-65", x:170,y:490,w:110,h:70, items:[
+  {t:"boss",x:"Dragonkin Soldier"},
+ ]},
+ {id:"deeproot", n:9, name:"Deeproot Depths", lvl:"60-80", x:290,y:490,w:130,h:70, items:[
+  {t:"boss",x:"Fia’s Champions"},
+  {t:"boss",x:"Lichdragon Fortissax"},
+  {t:"quest",x:"Fia / Deathbed Companion quest",n:"Do before burning"},
+ ]},
+ {id:"mohgwyn", n:11, name:"Mohgwyn Palace", lvl:"90-110", x:430,y:490,w:130,h:70, items:[
+  {t:"quest",x:"Varre / Pureblood Knight's Medal"},
+  {t:"boss",x:"Mohg, Lord of Blood",n:"Mohg's Great Rune; needed for DLC"},
+ ]},
+ {id:"dlc", n:14, name:"Shadow of the Erdtree (DLC)", lvl:"120+", x:600,y:430,w:170,h:130, items:[
+  {t:"item",x:"Unlock: beat Radahn + Mohg, enter Miquella's cocoon"},
+  {t:"item",x:"Collect Scadutree Fragments (blessing level)"},
+  {t:"item",x:"Collect Revered Spirit Ash"},
+  {t:"boss",x:"Divine Beast Dancing Lion"},
+  {t:"boss",x:"Rellana, Twin Moon Knight"},
+  {t:"boss",x:"Messmer the Impaler"},
+  {t:"boss",x:"Promised Consort Radahn"},
+ ]},
+];
+
+// ---- WHERE TO FIND (wiki-checked unless marked) ----------------------
+const W = {
+ "Meet Melina at Gatefront -> get Torrent":"Gatefront Ruins grace (west of Church of Elleh). Talk to Melina, accept her as your maiden -> Spectral Steed Whistle.",
+ "Church of Elleh: Spirit Calling Bell (Renna)":"Church of Elleh, Limgrave. Renna sits by the ruins AT NIGHT, after you have Torrent's whistle. If missing: wait for night, fast travel to Stormhill Shack and back. Backup: buy it (100 runes) from the Twin Maiden Husks, Roundtable Hold.",
+ "Collect first Golden Seeds + Sacred Tears":"Golden Seeds: (1) path from Stormgate to Stormhill Shack; (2) Mistwood, right in front of the Fort Haight entrance; (3) Weeping Peninsula, under a Phantom Tree on a ridge along the road to Castle Morne. Sacred Tears: Third Church of Marika (Limgrave); Weeping Peninsula churches: Callu Baptismal, Church of Pilgrimage, Fourth Church of Marika.",
+ "Dectus Medallion (Left): chest in Fort Haight tower, Mistwood":"Fort Haight, cliff southeast of Mistwood Ruins. Kenneth Haight (north of Mistwood outskirts) asks you to clear it. Chest at the top of the fort.",
+ "Blaidd (Mistwood Ruins)":"Top of Mistwood Ruins. Ask Merchant Kale (Church of Elleh) about the wolf howl -> he teaches Finger Snap gesture. Stand below Blaidd and use it.",
+ "Patches (Murkwater Cave)":"Murkwater Cave, Limgrave. Open the chest at the far end; he surrenders at ~half health. Later seen at Scenic Isle (Liurnia), Mt. Gelmir, Volcano Manor.",
+ "Boc the Seamster":"Appears as a small tree: east of the telescope south of Agheel Lake North grace, or northwest of Murkwater Bridge. Hit it to reveal him.",
+ "Roderika (Roundtable Hold)":"First at Stormhill Shack on the trail to Stormveil. Talk repeatedly (Spirit Jellyfish Ashes), deliver message in Stormveil, bring back Chrysalids' Memento from Rampart Tower. She then moves to Roundtable Hold and gives a Golden Seed.",
+ "Irina / Edgar (Castle Morne)":"Weeping Peninsula, Castle Morne area.|u",
+ "Academy Glintstone Key":"Outside the Academy: south from Crystalline Woods grace, behind the Glintstone Dragon Smarag (Liurnia). A second key is inside Raya Lucaria, on a chandelier in the Church of the Cuckoo.",
+ "Ranni the Witch (Ranni's Rise)":"Ranni first appears as Renna at Church of Elleh. Ranni's Rise is in the Three Sisters area of Liurnia; reach it by beating Royal Knight Loretta at Caria Manor. Later steps: Radahn defeated -> Fingerslayer Blade in Nokron -> Ainsel River Main (Miniature Ranni) -> Discarded Palace Key (Baleful Shadow, Nokstella) -> Dark Moon Ring (Raya Lucaria Grand Library). If Radahn festival is on, Ranni won't appear until Radahn is dead.",
+ "Sorceress Sellen / Jerren":"Sellen at Waypoint Ruins (Limgrave).|u",
+ "Haligtree Secret Medallion (Right): Village of the Albinaurics, hit pot Albus":"Swamp caves west of Liurnia, near Village of the Albinaurics grace. Strike Albus (disguised pot) past the Perfumer on the path.",
+ "Rya: Volcano Manor Invitation":"Rya is in Liurnia, east of Scenic Isle grace. Retrieve her necklace -> Volcano Manor Invitation.",
+ "Use both Dectus halves at Grand Lift of Dectus (Liurnia -> Altus)":"Grand Lift of Dectus connects Liurnia to Altus Plateau. Needs Left (Fort Haight) + Right (Fort Faroth).",
+ "Goldmask / Corhyn":"Corhyn starts in Roundtable Hold main room, then north road from Altus Highway Junction grace. Goldmask: north section of Forest-Spanning Great Bridge, south of East Windmill Pasture (Altus).",
+ "Volcano Manor: Tanith, Rya, Patches":"Volcano Manor, Mt. Gelmir. Ways in: Rya's invitation (Liurnia), Abductor Virgin (Raya Lucaria, via Patches), or walk from Altus through Gelmir campsites.",
+ "Bernahl + Fortified Manor summon fights (Varagram, Willem)":"Unlocked by Volcano Manor contracts (Rileigh the Idle -> Rya and Bernahl quests).",
+ "Complete all Volcano Manor contracts":"Pick up each letter in Volcano Manor drawing-room: Old Knight Istvan (Limgrave), Rileigh the Idle (Altus), Juno Hoslow (Mountaintops). Don't skip via the illusory wall behind the corpse or you lock parts of NPC quests.",
+ "Gurranq, Beast Clergyman (Deathroot)":"Bestial Sanctum, Dragonbarrow (waygate in East Limgrave). Deathroot quest starts at Summonwater Village: beat Tibia Mariner, report to D at Roundtable Hold.",
+ "Millicent, Gowry, Needle Knight Leda":"Gowry's Shack (Caelid) -> Unalloyed Gold Needle from Commander O'Neil (Swamp of Aeonia) -> Millicent at Church of the Plague -> Valkyrie's Prosthesis (chest in The Shaded Castle) to Millicent north of Erdtree-Gazing Hill (Altus) -> Godskin Apostle in Windmill Village -> Ancient Snow Valley Ruins (Mountaintops) -> Prayer Room, Elphael.",
+ "Dectus Medallion (Right): Fort Faroth":"Fort Faroth, east Dragonbarrow behind a giant dragon. Cross the dark room, climb ladder to tower top; chest holds the medallion.",
+ "Have 2 Great Runes + talk to Finger Reader Enia (Roundtable) to enter":"Great Runes: Godrick, Rennala (Unborn), Radahn, Rykard, Mohg, Malenia, Morgott. Any 2 + Finger Reader Enia at Roundtable Hold.",
+ "Seedbed Curses (3 spots)":"Leyndell: (1) building near East Capital Rampart grace, top floor body in chair; (2) Alternate Roundtable near Fortified Manor grace, body strapped to chair; (3) Blackguard's body in the outer moat near Capital Ramparts (needs Blackguard questline first).",
+ "Goldmask + Brother Corhyn questline":"Riddle: west of Erdtree Sanctuary grace, down elevator and stairs. Stand on message facing the statue, cast Law of Regression (Golden Order Principia, after Godfrey golden shade; needs 37 Int). Solve BEFORE burning the Erdtree.",
+ "Nepheli Loux: crown her ruler of Limgrave":"Finish her questline before burning; she becomes Godfrey fight summon.|u",
+ "Rold Medallion (Melina, after Morgott) -> Grand Lift of Rold":"After Morgott, talk to Melina at the grace on the battlefield (after you fail to enter the Erdtree). Rold lift links Leyndell to Mountaintops.",
+ "Forge of the Giants: do NOT burn the Erdtree until quests are done":"Mountaintops, east of Flame Peak, south of First Church of Marika. Take Rold lift, north-east over frozen lake, south to Flame Peak (Fire Giant), climb the chains. At the forge grace Melina asks you to commit -> teleports you to Farum Azula. Leyndell turns ashen only after Maliketh dies.",
+ "Haligtree Secret Medallion Left: Castle Sol roof, after Niall":"Roof of the northeast tower of Castle Sol, after beating Commander Niall.",
+ "Hoist Secret Medallion at bottom of Grand Lift of Rold":"Stand at the bottom of the lift and switch action from Hoist Medallion to Hoist Secret Medallion. Does not work from the top.",
+ "Millicent finale (verify steps on wiki)":"Prayer Room grace in Elphael (reach via Drainage Channel grace). See Millicent steps in Caelid.",
+ "Millicent: final steps in Elphael":"Prayer Room grace in Elphael (reach via Drainage Channel grace). Beat the Putrid Tree Spirit, then choose: help her vs her four sisters, or fight her.",
+ "Varre / Pureblood Knight's Medal":"White Mask Varre gives the Medal after three invasions in his questline; teleports you outside Mohgwyn Palace near Dynasty Mausoleum Entrance grace.",
+ "Mimic Tear Ashes (chest)":"Chest in Night's Sacred Ground, behind an imp statue door (needs Stonesword Key). Mimic Tear boss is separate: behind a mist door in a temple ruin in Nokron, Eternal City.",
+ "Mimic Tear (Nokron)":"Nokron, Eternal City: mist door to temple ruin; it transforms when you approach.",
+ "Unlock: beat Radahn + Mohg, enter Miquella's cocoon":"Defeat both, then enter the cocoon at Mohgwyn Palace.|u"
+};
+const q = s => "https://www.google.com/search?q=" + encodeURIComponent("elden ring " + s);
+
+// ---- STATE ---------------------------------------------------------
+const KEY = "er-progress-v1";
+let done = {};
+try { done = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch(e){ done = {}; }
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(done)); }catch(e){} }
+let sel = "limgrave";
+let filter = "all";
+const idOf = (r,i)=> r.id + ":" + i;
+
+// ---- MAP -----------------------------------------------------------
+const svg = document.getElementById("map");
+const NS = "http://www.w3.org/2000/svg";
+function mk(tag, attrs, text){
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (text) e.textContent = text;
+  return e;
+}
+function pctOf(r){
+  const total = r.items.length;
+  const d = r.items.filter((_,i)=>done[idOf(r,i)]).length;
+  return {d,total,pct: total? Math.round(d/total*100):0};
+}
+function color(p){
+  if (p.pct===100) return "#3f6a35";
+  if (p.pct>0) return "#6b5420";
+  return "#2a2418";
+}
+function drawMap(){
+  svg.innerHTML = "";
+  svg.appendChild(mk("rect",{x:0,y:0,width:800,height:600,fill:"#14110c",rx:8}));
+  svg.appendChild(mk("line",{x1:20,y1:478,x2:780,y2:478,stroke:"#3a2f1e","stroke-dasharray":"4 4"}));
+  svg.appendChild(mk("text",{x:20,y:472,fill:"#9a8c6e","font-size":10},"UNDERGROUND"));
+  R.forEach(r=>{
+    const p = pctOf(r);
+    const g = mk("g",{class:"region"+(r.id===sel?" sel":""),tabindex:0,role:"button","aria-label":r.name+" "+p.pct+"%"});
+    g.appendChild(mk("rect",{x:r.x,y:r.y,width:r.w,height:r.h,fill:color(p)}));
+    const cx = r.x + r.w/2, cy = r.y + r.h/2;
+    const lines = wrap(r.name, Math.floor(r.w/7));
+    const startY = cy - (lines.length-1)*7 - (r.h>50?6:3);
+    lines.forEach((ln,i)=> g.appendChild(mk("text",{x:cx,y:startY+i*13},ln)));
+    g.appendChild(mk("text",{x:cx,y:cy+ (lines.length*7)+2,class:"lvl"},"Lv "+r.lvl));
+    g.appendChild(mk("text",{x:cx,y:r.y+r.h-5,class:"pct"},p.d+"/"+p.total));
+    g.addEventListener("click",()=>{sel=r.id;render();});
+    g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();sel=r.id;render();}});
+    svg.appendChild(g);
+  });
+}
+function wrap(s, max){
+  const words = s.split(" "), out = []; let cur = "";
+  words.forEach(w=>{ if ((cur+" "+w).trim().length>max && cur){out.push(cur);cur=w;} else cur=(cur+" "+w).trim(); });
+  if (cur) out.push(cur);
+  return out;
+}
+
+// ---- PANEL ---------------------------------------------------------
+const panel = document.getElementById("panel");
+function drawPanel(){
+  const r = R.find(x=>x.id===sel);
+  const p = pctOf(r);
+  const shown = r.items.map((it,i)=>({it,i})).filter(o=>filter==="all"||o.it.t===filter);
+  panel.innerHTML = `
+    <h2>${r.name}</h2>
+    <div class="sub">Order ${r.n} · Recommended level ${r.lvl} · ${p.d}/${p.total} done (${p.pct}%)</div>
+    <div class="filters" id="filters">
+      ${["all","boss","quest","item"].map(f=>`<button data-f="${f}" class="${filter===f?"on":""}">${f}</button>`).join("")}
+      <button id="markall">Mark all</button>
+      <button id="clearall">Clear</button>
+    </div>
+    ${warnFor(r)}
+    <ul>${shown.map(({it,i})=>{
+      const id = idOf(r,i), ck = done[id];
+      return `<li class="${ck?"done":""}"><input type="checkbox" id="c${i}" data-id="${id}" ${ck?"checked":""}>
+        <label for="c${i}">${it.x}<span class="tag ${it.t}">${it.t}</span>${it.n?`<span class="note">${it.n}</span>`:""}${whereHtml(it)}</label></li>`;
+    }).join("") || "<li>Nothing in this filter.</li>"}</ul>`;
+  panel.querySelectorAll("input[type=checkbox]").forEach(cb=>cb.addEventListener("change",()=>{
+    if (cb.checked) done[cb.dataset.id]=true; else delete done[cb.dataset.id];
+    save(); render();
+  }));
+  panel.querySelectorAll("#filters button[data-f]").forEach(b=>b.addEventListener("click",()=>{filter=b.dataset.f;drawPanel();}));
+  panel.querySelector("#markall").onclick=()=>{r.items.forEach((_,i)=>done[idOf(r,i)]=true);save();render();};
+  panel.querySelector("#clearall").onclick=()=>{r.items.forEach((_,i)=>delete done[idOf(r,i)]);save();render();};
+}
+function whereHtml(it){
+  const raw = W[it.x];
+  let txt = "", unv = false;
+  if (raw){ const p = raw.split("|"); txt = p[0]; unv = p[1]==="u"; }
+  const lnk = `<a href="${q(it.x)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">search</a>`;
+  if (!txt) return `<span class="where"><em>Location not added yet</em>${lnk}</span>`;
+  return `<span class="where"><b>Where:</b> ${txt}${unv?" <em>(not wiki-checked)</em>":""}${lnk}</span>`;
+}
+function warnFor(r){
+  if (r.id==="mountaintops"||r.id==="farum")
+    return `<div class="warn">Before the Forge of the Giants / Maliketh: finish Ranni, Millicent, Varre, Volcano Manor, Fia, Goldmask, Sellen quests.</div>`;
+  return "";
+}
+
+// ---- OVERALL -------------------------------------------------------
+function drawOverall(){
+  let d=0,t=0;
+  R.forEach(r=>{const p=pctOf(r);d+=p.d;t+=p.total;});
+  const pct = t? Math.round(d/t*100):0;
+  document.getElementById("obar").style.width = pct+"%";
+  document.getElementById("otext").textContent = `${d}/${t} complete · ${pct}%`;
+}
+// ---- REAL MAP ------------------------------------------------------
+// default pin spots (% of image), approximate; use "Edit pins" to fix
+const PIN0 = {
+ limgrave:[43,73], weeping:[42,85], stormveil:[31,66], liurnia:[20,52], altus:[37,26], gelmir:[21,31],
+ leyndell:[49,40], mountaintops:[57,30], snowfield:[66,21], haligtree:[72,13], farum:[58,8], ashen:[53,46],
+ caelid:[53,72], dragonbarrow:[64,67]
+};
+const SIDE = ["siofra","ainsel","deeproot","mohgwyn","dlc"];
+let pins = {};
+try { pins = JSON.parse(localStorage.getItem("er-pins-v1") || "{}"); } catch(e){}
+let view = "real", editing = false, mapOk = false;
+try { view = localStorage.getItem("er-view") || "real"; } catch(e){}
+function pinEl(r){
+  const p = pctOf(r);
+  const el = document.createElement("div");
+  el.className = "pin" + (r.id===sel?" sel":"");
+  el.style.background = p.pct===100 ? "#3f6a35" : p.pct>0 ? "#8a6a22" : "#3a2f1e";
+  const SH = {liurnia:"Liurnia", leyndell:"Leyndell", mountaintops:"Mountaintops", snowfield:"Snowfield", haligtree:"Haligtree", farum:"Farum Azula", ashen:"Ashen Capital", gelmir:"Gelmir", stormveil:"Stormveil", weeping:"Weeping Pen.", altus:"Altus"};
+  el.innerHTML = (SH[r.id] || r.name.replace(/ \(.*\)| \+.*/,"")) + `<small>${p.d}/${p.total}</small>`;
+  el.dataset.id = r.id;
+  return el;
+}
+function drawReal(){
+  const pinsLayer = document.getElementById("pins");
+  pinsLayer.innerHTML = "";
+  R.forEach(r=>{
+    const pos = pins[r.id] || PIN0[r.id];
+    if (!pos) return;
+    const el = pinEl(r);
+    el.style.left = pos[0]+"%"; el.style.top = pos[1]+"%";
+    el.addEventListener("click",()=>{ if(!editing){sel=r.id;render();} else {sel=r.id;drawPanel();} });
+    el.addEventListener("pointerdown",ev=>{
+      if(!editing) return;
+      ev.preventDefault(); el.setPointerCapture(ev.pointerId);
+      const box = document.getElementById("inner").getBoundingClientRect();
+      const mv = e=>{
+        const x = Math.max(0,Math.min(100,(e.clientX-box.left)/box.width*100));
+        const y = Math.max(0,Math.min(100,(e.clientY-box.top)/box.height*100));
+        el.style.left = x+"%"; el.style.top = y+"%"; pins[r.id]=[+x.toFixed(2),+y.toFixed(2)];
+      };
+      const up = ()=>{ el.removeEventListener("pointermove",mv); el.removeEventListener("pointerup",up);
+        try{localStorage.setItem("er-pins-v1",JSON.stringify(pins));}catch(e){} };
+      el.addEventListener("pointermove",mv); el.addEventListener("pointerup",up);
+    });
+    pinsLayer.appendChild(el);
+  });
+  const side = document.getElementById("side");
+  side.innerHTML = "<span>Underground / DLC (not on this map):</span>";
+  SIDE.forEach(id=>{
+    const r = R.find(x=>x.id===id); if(!r) return;
+    const el = pinEl(r);
+    el.addEventListener("click",()=>{sel=r.id;render();});
+    side.appendChild(el);
+  });
+}
+function applyView(){
+  const real = view==="real";
+  document.getElementById("real").style.display = real ? "" : "none";
+  document.getElementById("map").style.display = real ? "none" : "";
+  document.getElementById("vReal").classList.toggle("on",real);
+  document.getElementById("vSchem").classList.toggle("on",!real);
+  document.getElementById("vEdit").classList.toggle("on",editing);
+  document.getElementById("real").classList.toggle("editing",editing);
+  document.getElementById("stage").style.display = mapOk ? "" : "none";
+  document.getElementById("nomap").style.display = mapOk ? "none" : "block";
+}
+const mapimg = document.getElementById("mapimg");
+mapimg.onload = ()=>{ mapOk = true; applyView(); };
+mapimg.onerror = ()=>{ mapOk = false; applyView(); };
+mapOk = mapimg.complete && mapimg.naturalWidth>0;
+document.getElementById("vReal").onclick = ()=>{ view="real"; try{localStorage.setItem("er-view",view);}catch(e){} applyView(); };
+document.getElementById("vSchem").onclick = ()=>{ view="schem"; try{localStorage.setItem("er-view",view);}catch(e){} applyView(); };
+document.getElementById("vEdit").onclick = ()=>{
+  editing = !editing; applyView();
+};
+
+function render(){ drawMap(); drawReal(); drawPanel(); drawOverall(); applyView(); }
+
+// ---- IO ------------------------------------------------------------
+document.getElementById("reset").onclick=()=>{ if(confirm("Reset all progress?")){done={};save();render();} };
+document.getElementById("exp").onclick=()=>{
+  const s = JSON.stringify(done);
+  navigator.clipboard?.writeText(s).then(()=>alert("Progress copied to clipboard."),()=>prompt("Copy:",s));
+  if(!navigator.clipboard) prompt("Copy:",s);
+};
+document.getElementById("imp").onclick=()=>{
+  const s = prompt("Paste exported progress:");
+  if(!s) return;
+  try{ const o=JSON.parse(s); if(o&&typeof o==="object"){done=o;save();render();} }catch(e){ alert("Invalid data."); }
+};
+render();
+</script>
+</body>
+</html>
