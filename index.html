@@ -3,110 +3,115 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Elden Ring Progress Map</title>
+<title>Elden Ring Map Tracker</title>
 <style>
   :root{
-    --bg:#0f0d0a; --panel:#1a1610; --panel2:#231d14; --line:#3a2f1e;
+    --bg:#0c0a07; --panel:#17130d; --panel2:#211a11; --line:#3a2f1e;
     --text:#e8dcc0; --muted:#9a8c6e; --gold:#d4a84b; --boss:#c9503c; --quest:#d4a84b; --item:#5b9bd5; --ok:#6fae5f;
   }
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Georgia,"Times New Roman",serif}
-  header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;flex-wrap:wrap;gap:14px;align-items:center;background:var(--panel)}
-  h1{margin:0;font-size:20px;letter-spacing:.06em;color:var(--gold);font-weight:600}
-  .overall{flex:1;min-width:220px}
-  .bar{height:10px;background:#000;border:1px solid var(--line);border-radius:6px;overflow:hidden}
-  .bar i{display:block;height:100%;background:linear-gradient(90deg,#8a6a22,var(--gold));width:0;transition:width .3s}
-  .overall small{color:var(--muted)}
-  button,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);padding:6px 11px;border-radius:5px;font:inherit;cursor:pointer}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 Georgia,"Times New Roman",serif;display:flex;overflow:hidden}
+  button{background:var(--panel2);color:var(--text);border:1px solid var(--line);padding:5px 10px;border-radius:5px;font:inherit;cursor:pointer}
   button:hover{border-color:var(--gold)}
-  .layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:16px;padding:16px 20px;max-width:1400px;margin:0 auto}
-  @media(max-width:860px){.layout{grid-template-columns:1fr;padding:12px 16px}}
-  .mapwrap{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px}
-  svg{width:100%;height:auto;display:block}
-  .region{cursor:pointer}
-  .region rect{stroke:#5a4a2a;stroke-width:1.5;rx:10;transition:fill .2s}
-  .region:hover rect{stroke:var(--gold)}
-  .region.sel rect{stroke:#fff;stroke-width:3}
-  .region text{pointer-events:none;fill:var(--text);font-size:12px;text-anchor:middle}
-  .region .lvl{fill:var(--muted);font-size:10px}
-  .region .pct{font-size:11px;fill:var(--gold)}
-  .legend{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:13px;padding:6px 4px 2px}
-  .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px}
-  .panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;align-self:start;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
-  @media(max-width:860px){.panel{position:static;max-height:none}}
-  .panel h2{margin:0 0 2px;color:var(--gold);font-size:19px}
-  .sub{color:var(--muted);font-size:13px;margin-bottom:10px}
-  .filters{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
-  .filters button.on{border-color:var(--gold);color:var(--gold)}
-  ul{list-style:none;margin:0;padding:0}
-  li{display:flex;gap:10px;align-items:flex-start;padding:7px 4px;border-bottom:1px solid var(--line)}
-  li label{cursor:pointer;flex:1}
-  li input{margin-top:4px;accent-color:var(--ok);width:16px;height:16px}
-  li.done label{color:var(--muted);text-decoration:line-through}
-  .tag{font-size:10px;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:9px;border:1px solid;margin-left:6px;vertical-align:middle}
-  .tag.boss{color:var(--boss);border-color:var(--boss)}
-  .tag.quest{color:var(--quest);border-color:var(--quest)}
-  .tag.item{color:var(--item);border-color:var(--item)}
-  .note{display:block;color:var(--muted);font-size:12.5px}
-  .vbar{display:flex;gap:6px;margin-bottom:8px}
-  .vbar button.on{border-color:var(--gold);color:var(--gold)}
-  #stage{position:relative;overflow:hidden;aspect-ratio:1920/1750;border-radius:6px;background:#000}
-  #inner{position:relative;width:100%;aspect-ratio:1920/1851}
-  #inner img{position:absolute;inset:0;width:100%;height:100%;display:block}
-  #pins{position:absolute;inset:0}
-  .pin{position:absolute;transform:translate(-50%,-50%);padding:1px 7px;border-radius:12px;font:600 11px/1.35 Georgia,serif;border:2px solid #e8dcc0;color:#fff;cursor:pointer;white-space:nowrap;box-shadow:0 1px 4px #000c;touch-action:none;user-select:none}
-  .pin small{font-weight:400;opacity:.9;margin-left:4px}
-  .pin.sel{border-color:#fff;box-shadow:0 0 0 3px var(--gold)}
-  .editing .pin{cursor:move;outline:2px dashed var(--gold);outline-offset:2px}
-  #nomap{display:none;padding:12px;color:var(--muted)}
-  #side{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;align-items:center}
-  #side span{color:var(--muted);font-size:12.5px}
-  #side .pin{position:static;transform:none}
-  .where{display:block;margin-top:3px;font-size:13px;color:#cfc3a4}
-  .where b{color:var(--gold);font-weight:600}
-  .where em{color:var(--muted)}
-  .where a{color:var(--item);font-size:12px;margin-left:6px}
-  .warn{background:#3a1a14;border:1px solid var(--boss);color:#f0c8bf;padding:8px 10px;border-radius:6px;margin:8px 0;font-size:13px}
-  .disclaimer{max-width:1400px;margin:0 auto;padding:0 20px 24px;color:var(--muted);font-size:12.5px}
+  button.on{border-color:var(--gold);color:var(--gold)}
+  input[type=search]{width:100%;background:#0c0a07;color:var(--text);border:1px solid var(--line);border-radius:5px;padding:7px 9px;font:inherit}
+
+  /* sidebar */
+  #side{width:370px;max-width:44vw;height:100%;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);flex:none}
+  .sh{padding:12px 14px;border-bottom:1px solid var(--line)}
+  h1{margin:0 0 8px;font-size:17px;letter-spacing:.07em;color:var(--gold)}
+  .bar{height:9px;background:#000;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#8a6a22,var(--gold));transition:width .3s}
+  #otext{color:var(--muted);font-size:12.5px}
+  .row{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .chip{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  #list{overflow:auto;flex:1;padding-bottom:30px}
+  details{border-bottom:1px solid var(--line)}
+  summary{cursor:pointer;padding:8px 14px;display:flex;justify-content:space-between;gap:8px;list-style:none;background:#1c160e}
+  summary::-webkit-details-marker{display:none}
+  summary b{color:var(--gold);font-weight:600}
+  summary small{color:var(--muted)}
+  .it{display:flex;gap:9px;align-items:flex-start;padding:6px 14px;border-top:1px solid #2a2216}
+  .it:hover{background:#1f1810}
+  .it input{margin-top:3px;accent-color:var(--ok);width:15px;height:15px;flex:none}
+  .it .t{flex:1;cursor:pointer}
+  .it.done .t{color:var(--muted);text-decoration:line-through}
+  .gl{display:inline-block;width:16px;text-align:center;margin-right:3px}
+  .gl.boss{color:var(--boss)} .gl.quest{color:var(--quest)} .gl.item{color:var(--item)}
+  .nopin{color:var(--muted);font-size:11px}
+
+  /* map */
+  #main{flex:1;position:relative;min-width:0;height:100%}
+  #vp{position:absolute;inset:0;overflow:hidden;background:#000;touch-action:none;cursor:grab}
+  #vp.drag{cursor:grabbing}
+  #world{position:absolute;left:0;top:0;width:1920px;height:1750px;transform-origin:0 0;overflow:hidden}
+  #world.anim{transition:transform .4s ease}
+  #world img{position:absolute;left:0;top:0;width:1920px;height:1851px;display:block;user-select:none;-webkit-user-drag:none}
+  .mk{position:absolute;width:26px;height:26px;margin:-13px 0 0 -13px;border-radius:50%;border:2px solid #fff;display:flex;align-items:center;justify-content:center;
+      font-size:13px;line-height:1;color:#fff;cursor:pointer;box-shadow:0 1px 5px #000b;transform:scale(var(--inv,1));transform-origin:center;user-select:none;touch-action:none}
+  .mk.boss{background:var(--boss)} .mk.quest{background:#a8802f} .mk.item{background:#3f77ab}
+  .mk.found{background:#3f6a35;opacity:.55;border-color:#9ad08a}
+  .mk.sel{box-shadow:0 0 0 4px var(--gold),0 1px 6px #000}
+  .editing .mk{outline:2px dashed var(--gold);outline-offset:2px;cursor:move}
+  .zoom{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px;z-index:5}
+  .zoom button{width:34px;height:34px;padding:0;font-size:18px;background:#17130dcc}
+  #offmap{position:absolute;left:12px;bottom:12px;right:60px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;z-index:5;background:#17130dcc;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-size:12.5px}
+  #offmap span{color:var(--muted)}
+  #nomap{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:30px;color:var(--muted);z-index:4;background:#0c0a07}
+
+  /* popup */
+  #pop{position:absolute;z-index:10;width:310px;max-width:calc(100% - 20px);background:var(--panel);border:1px solid var(--gold);border-radius:8px;padding:12px 14px;box-shadow:0 8px 24px #000c;display:none}
+  #pop h3{margin:0 0 2px;font-size:15px;color:var(--gold);padding-right:20px}
+  #pop .meta{color:var(--muted);font-size:12px;margin-bottom:6px}
+  #pop .where{font-size:13px;color:#cfc3a4;max-height:180px;overflow:auto}
+  #pop .where b{color:var(--gold)}
+  #pop .where em,#pop .note{color:var(--muted);font-size:12.5px}
+  #pop .x{position:absolute;right:8px;top:6px;border:0;background:none;font-size:18px;color:var(--muted)}
+  #pop label{display:flex;gap:8px;align-items:center;margin-top:10px;cursor:pointer;font-weight:600}
+  #pop input{accent-color:var(--ok);width:17px;height:17px}
+  #pop a{color:var(--item);font-size:12px}
+  .warn{background:#3a1a14;border:1px solid var(--boss);color:#f0c8bf;padding:6px 9px;border-radius:6px;margin:6px 0;font-size:12.5px}
+
+  @media(max-width:800px){
+    body{flex-direction:column-reverse;overflow:auto}
+    #side{width:100%;max-width:none;height:auto;min-height:50vh}
+    #main{height:55vh;flex:none}
+    #list{overflow:visible}
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>ELDEN RING · PROGRESS MAP</h1>
-  <div class="overall">
-    <div class="bar"><i id="obar"></i></div>
-    <small id="otext"></small>
-  </div>
-  <button id="exp">Export</button>
-  <button id="imp">Import</button>
-  <button id="reset">Reset</button>
-</header>
 
-<div class="layout">
-  <div>
-    <div class="mapwrap">
-      <div class="vbar">
-        <button id="vReal">Real map</button>
-        <button id="vSchem">Schematic</button>
-        <button id="vEdit" title="Drag pins to the right spot; saved in this browser">Edit pins</button>
-      </div>
-      <div id="real">
-        <div id="stage"><div id="inner"><img id="mapimg" src="elden-ring-map.jpg" alt="Lands Between map"><div id="pins"></div></div></div>
-        <div id="nomap">Map image not found. Save a map of the Lands Between as <b>elden-ring-map.jpg</b> in the same folder as this file, then reload.</div>
-        <div id="side"></div>
-      </div>
-      <svg id="map" viewBox="0 0 800 600" role="img" aria-label="Stylized Lands Between map"></svg>
-      <div class="legend">
-        <span><span class="dot" style="background:#2a2418"></span>0%</span>
-        <span><span class="dot" style="background:#6b5420"></span>in progress</span>
-        <span><span class="dot" style="background:#3f6a35"></span>complete</span>
-        <span>Stylized map, not to scale. Region number = suggested order.</span>
-      </div>
+<aside id="side">
+  <div class="sh">
+    <h1>ELDEN RING · MAP TRACKER</h1>
+    <div class="bar"><i id="obar"></i></div>
+    <div id="otext"></div>
+    <div class="row">
+      <button id="exp">Export</button><button id="imp">Import</button><button id="reset">Reset</button>
     </div>
   </div>
-  <aside class="panel" id="panel"></aside>
-</div>
-<p class="disclaimer">Levels: RankedBoost ranges where available, otherwise estimated from wiki.gg area tiers; the game ends around lv 120 ±10. Medallions, Great Runes and Erdtree-burn items checked on Fextralife wiki. Ranni, Millicent, Varre, Fia and Sellen step details NOT verified — check a quest walkthrough. Progress is saved in this browser (localStorage). Use Export to back it up.</p>
+  <div class="sh">
+    <input id="q" type="search" placeholder="Search items, places, NPCs...">
+    <div class="row" id="cats"></div>
+    <div class="row">
+      <button id="hideFound">Hide found</button>
+      <button id="edit" title="Drag markers to the right spot on the map. Saved in this browser.">Edit marker positions</button>
+      <button id="openAll">Expand all</button>
+    </div>
+  </div>
+  <div id="list"></div>
+</aside>
+
+<section id="main">
+  <div id="vp"><div id="world"><img id="mapimg" src="elden-ring-map.jpg" alt="Lands Between map" draggable="false"><div id="mk"></div></div></div>
+  <div class="zoom"><button id="zin" title="Zoom in">+</button><button id="zout" title="Zoom out">&minus;</button><button id="zfit" title="Fit map" style="font-size:12px">fit</button></div>
+  <div id="offmap"></div>
+  <div id="nomap">Map image not found.<br>Put <b>elden-ring-map.jpg</b> in the same folder as this file and reload.</div>
+  <div id="pop"></div>
+</section>
 
 <script>
 // ---- DATA ----------------------------------------------------------
@@ -276,202 +281,285 @@ const W = {
 };
 const q = s => "https://www.google.com/search?q=" + encodeURIComponent("elden ring " + s);
 
-// ---- STATE ---------------------------------------------------------
-const KEY = "er-progress-v1";
-let done = {};
-try { done = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch(e){ done = {}; }
-function save(){ try{ localStorage.setItem(KEY, JSON.stringify(done)); }catch(e){} }
-let sel = "limgrave";
-let filter = "all";
-const idOf = (r,i)=> r.id + ":" + i;
-
-// ---- MAP -----------------------------------------------------------
-const svg = document.getElementById("map");
-const NS = "http://www.w3.org/2000/svg";
-function mk(tag, attrs, text){
-  const e = document.createElementNS(NS, tag);
-  for (const k in attrs) e.setAttribute(k, attrs[k]);
-  if (text) e.textContent = text;
-  return e;
-}
-function pctOf(r){
-  const total = r.items.length;
-  const d = r.items.filter((_,i)=>done[idOf(r,i)]).length;
-  return {d,total,pct: total? Math.round(d/total*100):0};
-}
-function color(p){
-  if (p.pct===100) return "#3f6a35";
-  if (p.pct>0) return "#6b5420";
-  return "#2a2418";
-}
-function drawMap(){
-  svg.innerHTML = "";
-  svg.appendChild(mk("rect",{x:0,y:0,width:800,height:600,fill:"#14110c",rx:8}));
-  svg.appendChild(mk("line",{x1:20,y1:478,x2:780,y2:478,stroke:"#3a2f1e","stroke-dasharray":"4 4"}));
-  svg.appendChild(mk("text",{x:20,y:472,fill:"#9a8c6e","font-size":10},"UNDERGROUND"));
-  R.forEach(r=>{
-    const p = pctOf(r);
-    const g = mk("g",{class:"region"+(r.id===sel?" sel":""),tabindex:0,role:"button","aria-label":r.name+" "+p.pct+"%"});
-    g.appendChild(mk("rect",{x:r.x,y:r.y,width:r.w,height:r.h,fill:color(p)}));
-    const cx = r.x + r.w/2, cy = r.y + r.h/2;
-    const lines = wrap(r.name, Math.floor(r.w/7));
-    const startY = cy - (lines.length-1)*7 - (r.h>50?6:3);
-    lines.forEach((ln,i)=> g.appendChild(mk("text",{x:cx,y:startY+i*13},ln)));
-    g.appendChild(mk("text",{x:cx,y:cy+ (lines.length*7)+2,class:"lvl"},"Lv "+r.lvl));
-    g.appendChild(mk("text",{x:cx,y:r.y+r.h-5,class:"pct"},p.d+"/"+p.total));
-    g.addEventListener("click",()=>{sel=r.id;render();});
-    g.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();sel=r.id;render();}});
-    svg.appendChild(g);
-  });
-}
-function wrap(s, max){
-  const words = s.split(" "), out = []; let cur = "";
-  words.forEach(w=>{ if ((cur+" "+w).trim().length>max && cur){out.push(cur);cur=w;} else cur=(cur+" "+w).trim(); });
-  if (cur) out.push(cur);
-  return out;
-}
-
-// ---- PANEL ---------------------------------------------------------
-const panel = document.getElementById("panel");
-function drawPanel(){
-  const r = R.find(x=>x.id===sel);
-  const p = pctOf(r);
-  const shown = r.items.map((it,i)=>({it,i})).filter(o=>filter==="all"||o.it.t===filter);
-  panel.innerHTML = `
-    <h2>${r.name}</h2>
-    <div class="sub">Order ${r.n} · Recommended level ${r.lvl} · ${p.d}/${p.total} done (${p.pct}%)</div>
-    <div class="filters" id="filters">
-      ${["all","boss","quest","item"].map(f=>`<button data-f="${f}" class="${filter===f?"on":""}">${f}</button>`).join("")}
-      <button id="markall">Mark all</button>
-      <button id="clearall">Clear</button>
-    </div>
-    ${warnFor(r)}
-    <ul>${shown.map(({it,i})=>{
-      const id = idOf(r,i), ck = done[id];
-      return `<li class="${ck?"done":""}"><input type="checkbox" id="c${i}" data-id="${id}" ${ck?"checked":""}>
-        <label for="c${i}">${it.x}<span class="tag ${it.t}">${it.t}</span>${it.n?`<span class="note">${it.n}</span>`:""}${whereHtml(it)}</label></li>`;
-    }).join("") || "<li>Nothing in this filter.</li>"}</ul>`;
-  panel.querySelectorAll("input[type=checkbox]").forEach(cb=>cb.addEventListener("change",()=>{
-    if (cb.checked) done[cb.dataset.id]=true; else delete done[cb.dataset.id];
-    save(); render();
-  }));
-  panel.querySelectorAll("#filters button[data-f]").forEach(b=>b.addEventListener("click",()=>{filter=b.dataset.f;drawPanel();}));
-  panel.querySelector("#markall").onclick=()=>{r.items.forEach((_,i)=>done[idOf(r,i)]=true);save();render();};
-  panel.querySelector("#clearall").onclick=()=>{r.items.forEach((_,i)=>delete done[idOf(r,i)]);save();render();};
-}
-function whereHtml(it){
-  const raw = W[it.x];
-  let txt = "", unv = false;
-  if (raw){ const p = raw.split("|"); txt = p[0]; unv = p[1]==="u"; }
-  const lnk = `<a href="${q(it.x)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">search</a>`;
-  if (!txt) return `<span class="where"><em>Location not added yet</em>${lnk}</span>`;
-  return `<span class="where"><b>Where:</b> ${txt}${unv?" <em>(not wiki-checked)</em>":""}${lnk}</span>`;
-}
-function warnFor(r){
-  if (r.id==="mountaintops"||r.id==="farum")
-    return `<div class="warn">Before the Forge of the Giants / Maliketh: finish Ranni, Millicent, Varre, Volcano Manor, Fia, Goldmask, Sellen quests.</div>`;
-  return "";
-}
-
-// ---- OVERALL -------------------------------------------------------
-function drawOverall(){
-  let d=0,t=0;
-  R.forEach(r=>{const p=pctOf(r);d+=p.d;t+=p.total;});
-  const pct = t? Math.round(d/t*100):0;
-  document.getElementById("obar").style.width = pct+"%";
-  document.getElementById("otext").textContent = `${d}/${t} complete · ${pct}%`;
-}
-// ---- REAL MAP ------------------------------------------------------
-// default pin spots (% of image), approximate; use "Edit pins" to fix
+// ======================================================================
+// APP
+// ======================================================================
+const MAPW = 1920, MAPH = 1750, IMGH = 1851;      // map crop / full image height
 const PIN0 = {
  limgrave:[43,73], weeping:[42,85], stormveil:[31,66], liurnia:[20,52], altus:[37,26], gelmir:[21,31],
  leyndell:[49,40], mountaintops:[57,30], snowfield:[66,21], haligtree:[72,13], farum:[58,8], ashen:[53,46],
  caelid:[53,72], dragonbarrow:[64,67]
 };
-const SIDE = ["siofra","ainsel","deeproot","mohgwyn","dlc"];
-let pins = {};
-try { pins = JSON.parse(localStorage.getItem("er-pins-v1") || "{}"); } catch(e){}
-let view = "real", editing = false, mapOk = false;
-try { view = localStorage.getItem("er-view") || "real"; } catch(e){}
-function pinEl(r){
-  const p = pctOf(r);
-  const el = document.createElement("div");
-  el.className = "pin" + (r.id===sel?" sel":"");
-  el.style.background = p.pct===100 ? "#3f6a35" : p.pct>0 ? "#8a6a22" : "#3a2f1e";
-  const SH = {liurnia:"Liurnia", leyndell:"Leyndell", mountaintops:"Mountaintops", snowfield:"Snowfield", haligtree:"Haligtree", farum:"Farum Azula", ashen:"Ashen Capital", gelmir:"Gelmir", stormveil:"Stormveil", weeping:"Weeping Pen.", altus:"Altus"};
-  el.innerHTML = (SH[r.id] || r.name.replace(/ \(.*\)| \+.*/,"")) + `<small>${p.d}/${p.total}</small>`;
-  el.dataset.id = r.id;
-  return el;
-}
-function drawReal(){
-  const pinsLayer = document.getElementById("pins");
-  pinsLayer.innerHTML = "";
+const OFF = ["siofra","ainsel","deeproot","mohgwyn","dlc"];
+const GL = {boss:"☠", quest:"!", item:"◆"};
+const LS = (k,v)=>{ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v);}catch(e){ return null; } };
+
+let done = {}, pos = {};
+try { done = JSON.parse(LS("er-progress-v1")||"{}"); } catch(e){}
+try { pos  = JSON.parse(LS("er-ipos-v1")||"{}"); } catch(e){}
+const saveDone = ()=>LS("er-progress-v1", JSON.stringify(done));
+const savePos  = ()=>LS("er-ipos-v1", JSON.stringify(pos));
+const idOf = (r,i)=> r.id + ":" + i;
+
+// flatten
+const ALL = [];
+R.forEach(r=>r.items.forEach((it,i)=>ALL.push({id:idOf(r,i), r, it, i})));
+const byId = Object.fromEntries(ALL.map(o=>[o.id,o]));
+
+// default positions: ring around the region pin
+(function(){
   R.forEach(r=>{
-    const pos = pins[r.id] || PIN0[r.id];
-    if (!pos) return;
-    const el = pinEl(r);
-    el.style.left = pos[0]+"%"; el.style.top = pos[1]+"%";
-    el.addEventListener("click",()=>{ if(!editing){sel=r.id;render();} else {sel=r.id;drawPanel();} });
-    el.addEventListener("pointerdown",ev=>{
-      if(!editing) return;
-      ev.preventDefault(); el.setPointerCapture(ev.pointerId);
-      const box = document.getElementById("inner").getBoundingClientRect();
-      const mv = e=>{
-        const x = Math.max(0,Math.min(100,(e.clientX-box.left)/box.width*100));
-        const y = Math.max(0,Math.min(100,(e.clientY-box.top)/box.height*100));
-        el.style.left = x+"%"; el.style.top = y+"%"; pins[r.id]=[+x.toFixed(2),+y.toFixed(2)];
-      };
-      const up = ()=>{ el.removeEventListener("pointermove",mv); el.removeEventListener("pointerup",up);
-        try{localStorage.setItem("er-pins-v1",JSON.stringify(pins));}catch(e){} };
-      el.addEventListener("pointermove",mv); el.addEventListener("pointerup",up);
+    if (!PIN0[r.id]) return;
+    const n = r.items.length, rx = Math.min(4, 1.2 + 0.4*n), ry = rx*MAPW/IMGH;
+    r.items.forEach((it,i)=>{
+      const a = (i/n)*Math.PI*2 - Math.PI/2;
+      byId[idOf(r,i)].def = [PIN0[r.id][0] + Math.cos(a)*rx, PIN0[r.id][1] + Math.sin(a)*ry];
     });
-    pinsLayer.appendChild(el);
   });
-  const side = document.getElementById("side");
-  side.innerHTML = "<span>Underground / DLC (not on this map):</span>";
-  SIDE.forEach(id=>{
+})();
+const posOf = o => pos[o.id] || o.def || null;
+
+// state
+const types = {boss:true, quest:true, item:true};
+let hideFound = false, editing = false, search = "", selId = null;
+const openR = new Set(["limgrave"]);
+
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+function whereParts(it){
+  const raw = W[it.x]; if (!raw) return {txt:"", unv:false};
+  const p = raw.split("|"); return {txt:p[0], unv:p[1]==="u"};
+}
+function visible(o){
+  if (!types[o.it.t]) return false;
+  if (hideFound && done[o.id]) return false;
+  if (search){
+    const hay = (o.it.x+" "+(o.it.n||"")+" "+whereParts(o.it).txt+" "+o.r.name).toLowerCase();
+    if (!hay.includes(search)) return false;
+  }
+  return true;
+}
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function counts(list){ const d=list.filter(o=>done[o.id]).length; return {d,t:list.length}; }
+
+// ---------- pan / zoom ----------
+const vp = $("vp"), world = $("world");
+let S=1, TX=0, TY=0, fitS=1;
+function apply(anim){
+  world.classList.toggle("anim", !!anim);
+  world.style.transform = `translate(${TX}px,${TY}px) scale(${S})`;
+  world.style.setProperty("--inv", (1/S).toFixed(4));
+}
+function fit(anim){
+  const w = vp.clientWidth, h = vp.clientHeight;
+  fitS = Math.min(w/MAPW, h/MAPH);
+  S = fitS; TX = (w-MAPW*S)/2; TY = (h-MAPH*S)/2; apply(anim);
+}
+function zoomAt(cx, cy, f, anim){
+  const s2 = Math.max(fitS*0.9, Math.min(5, S*f));
+  TX = cx - (cx-TX)*s2/S; TY = cy - (cy-TY)*s2/S; S = s2; apply(anim);
+}
+vp.addEventListener("wheel", e=>{
+  e.preventDefault(); closePop();
+  const r = vp.getBoundingClientRect();
+  zoomAt(e.clientX-r.left, e.clientY-r.top, Math.exp(-e.deltaY*0.0015));
+},{passive:false});
+$("zin").onclick  = ()=>zoomAt(vp.clientWidth/2, vp.clientHeight/2, 1.4, true);
+$("zout").onclick = ()=>zoomAt(vp.clientWidth/2, vp.clientHeight/2, 1/1.4, true);
+$("zfit").onclick = ()=>fit(true);
+window.addEventListener("resize", ()=>{ const was = S<=fitS*1.001; const old=fitS; fitS = Math.min(vp.clientWidth/MAPW, vp.clientHeight/MAPH); if(was) fit(); });
+
+const ptrs = new Map(); let lastDist = 0, moved = 0, dragMarker = null;
+vp.addEventListener("pointerdown", e=>{
+  const mk = e.target.closest(".mk");
+  moved = 0;
+  if (mk && editing){
+    dragMarker = mk; mk.setPointerCapture(e.pointerId); e.preventDefault(); return;
+  }
+  ptrs.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if (ptrs.size===2){ const [a,b]=[...ptrs.values()]; lastDist = Math.hypot(a.x-b.x,a.y-b.y); }
+});
+vp.addEventListener("pointermove", e=>{
+  if (dragMarker){
+    const r = vp.getBoundingClientRect();
+    const wx = (e.clientX-r.left-TX)/S, wy = (e.clientY-r.top-TY)/S;
+    const x = Math.max(0,Math.min(100, wx/MAPW*100)), y = Math.max(0,Math.min(100, wy/IMGH*100));
+    pos[dragMarker.dataset.id] = [+x.toFixed(2), +y.toFixed(2)];
+    dragMarker.style.left = (x/100*MAPW)+"px"; dragMarker.style.top = (y/100*IMGH)+"px";
+    moved = 99; return;
+  }
+  const p = ptrs.get(e.pointerId); if (!p) return;
+  const dx = e.clientX-p.x, dy = e.clientY-p.y;
+  p.x = e.clientX; p.y = e.clientY;
+  if (ptrs.size===1){
+    moved += Math.abs(dx)+Math.abs(dy);
+    if (moved>4){ if(!vp.classList.contains("drag")) try{ vp.setPointerCapture(e.pointerId); }catch(_){} vp.classList.add("drag"); closePop(); TX += dx; TY += dy; apply(); }
+  } else if (ptrs.size===2){
+    const [a,b]=[...ptrs.values()]; const d = Math.hypot(a.x-b.x,a.y-b.y);
+    const r = vp.getBoundingClientRect();
+    if (lastDist) zoomAt((a.x+b.x)/2-r.left,(a.y+b.y)/2-r.top, d/lastDist);
+    lastDist = d; moved = 99; closePop();
+  }
+});
+function endPtr(e){
+  if (dragMarker){ dragMarker = null; savePos(); return; }
+  ptrs.delete(e.pointerId); lastDist = 0; vp.classList.remove("drag");
+}
+vp.addEventListener("pointerup", endPtr);
+vp.addEventListener("pointercancel", endPtr);
+
+// ---------- markers ----------
+function drawMarkers(){
+  const layer = $("mk"); layer.innerHTML = "";
+  ALL.forEach(o=>{
+    if (!visible(o)) return;
+    const p = posOf(o); if (!p) return;
+    const el = document.createElement("div");
+    el.className = "mk "+o.it.t+(done[o.id]?" found":"")+(o.id===selId?" sel":"");
+    el.dataset.id = o.id;
+    el.textContent = done[o.id] ? "✓" : GL[o.it.t];
+    el.style.left = (p[0]/100*MAPW)+"px"; el.style.top = (p[1]/100*IMGH)+"px";
+    el.addEventListener("click", ev=>{ if (moved>4) return; ev.stopPropagation(); selId = o.id; drawMarkers(); showPop(o, el); });
+    layer.appendChild(el);
+  });
+}
+
+// ---------- popup ----------
+const pop = $("pop");
+function closePop(){ pop.style.display = "none"; }
+function warnFor(r){
+  return (r.id==="mountaintops"||r.id==="farum")
+    ? `<div class="warn">Before the Forge of the Giants / Maliketh: finish Ranni, Millicent, Varre, Volcano Manor, Fia, Goldmask, Sellen quests.</div>` : "";
+}
+function showPop(o, anchor){
+  const w = whereParts(o.it);
+  const lnk = `<a href="${q(o.it.x)}" target="_blank" rel="noopener">search the web</a>`;
+  pop.innerHTML = `<button class="x" aria-label="Close">&times;</button>
+    <h3>${esc(o.it.x)}</h3>
+    <div class="meta">${o.it.t.toUpperCase()} · ${esc(o.r.name)} · Lv ${esc(o.r.lvl)}</div>
+    ${o.it.n?`<div class="note">${esc(o.it.n)}</div>`:""}
+    <div class="where">${w.txt?`<b>Where:</b> ${esc(w.txt)}${w.unv?" <em>(not wiki-checked)</em>":""}`:`<em>Location text not added yet.</em>`} ${lnk}</div>
+    ${warnFor(o.r)}
+    <label><input type="checkbox" ${done[o.id]?"checked":""}> Mark as found</label>`;
+  pop.style.display = "block";
+  pop.querySelector(".x").onclick = closePop;
+  pop.querySelector("input").onchange = e=>{ toggle(o.id, e.target.checked); };
+  // place near anchor
+  const vr = $("main").getBoundingClientRect();
+  let left, top;
+  if (anchor){
+    const ar = anchor.getBoundingClientRect();
+    left = ar.right - vr.left + 12; top = ar.top - vr.top - 10;
+  } else { left = 20; top = 20; }
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  if (left + pw > vr.width - 8) left = Math.max(8, (anchor ? anchor.getBoundingClientRect().left - vr.left - pw - 12 : vr.width-pw-8));
+  top = Math.max(8, Math.min(top, vr.height - ph - 8));
+  pop.style.left = left+"px"; pop.style.top = top+"px";
+}
+
+function focusItem(o){
+  const p = posOf(o);
+  selId = o.id;
+  if (!p){ drawMarkers(); showPop(o, null); return; }
+  const ts = Math.max(S, fitS*2.2);
+  S = Math.min(ts, 5);
+  TX = vp.clientWidth/2 - (p[0]/100*MAPW)*S; TY = vp.clientHeight/2 - (p[1]/100*IMGH)*S;
+  apply(true); drawMarkers();
+  setTimeout(()=>{ const el = document.querySelector(`.mk[data-id="${CSS.escape(o.id)}"]`); showPop(o, el||null); }, 420);
+}
+
+// ---------- state change ----------
+function toggle(id, on){
+  if (on) done[id] = true; else delete done[id];
+  saveDone(); drawMarkers(); drawList(); drawOverall(); drawOff();
+  const o = byId[id]; if (pop.style.display==="block" && o){ const el=document.querySelector(`.mk[data-id="${CSS.escape(id)}"]`); showPop(o, el||null); }
+}
+
+// ---------- sidebar ----------
+function drawCats(){
+  const box = $("cats"); box.innerHTML = "";
+  ["boss","quest","item"].forEach(t=>{
+    const c = counts(ALL.filter(o=>o.it.t===t));
+    const b = document.createElement("button");
+    b.className = "chip"+(types[t]?" on":"");
+    b.innerHTML = `<span class="gl ${t}">${GL[t]}</span>${t} ${c.d}/${c.t}`;
+    b.onclick = ()=>{ types[t]=!types[t]; drawCats(); drawList(); drawMarkers(); };
+    box.appendChild(b);
+  });
+}
+function drawList(){
+  const box = $("list"); const keepScroll = box.scrollTop; box.innerHTML = "";
+  R.slice().sort((a,b)=>a.n-b.n).forEach(r=>{
+    const all = ALL.filter(o=>o.r===r), vis = all.filter(visible);
+    if (!vis.length && (search || hideFound)) return;
+    const c = counts(all);
+    const d = document.createElement("details");
+    d.id = "reg-"+r.id; d.open = openR.has(r.id) || !!search;
+    d.addEventListener("toggle", ()=>{ if(d.open) openR.add(r.id); else openR.delete(r.id); });
+    d.innerHTML = `<summary><span><b>${r.n}. ${esc(r.name)}</b> <small>Lv ${esc(r.lvl)}</small></span><small>${c.d}/${c.t}</small></summary>`;
+    vis.forEach(o=>{
+      const row = document.createElement("div");
+      row.className = "it"+(done[o.id]?" done":"");
+      row.innerHTML = `<input type="checkbox" ${done[o.id]?"checked":""}><span class="t"><span class="gl ${o.it.t}">${GL[o.it.t]}</span>${esc(o.it.x)}${posOf(o)?"":' <span class="nopin">(off-map)</span>'}</span>`;
+      row.querySelector("input").onchange = e=>toggle(o.id, e.target.checked);
+      row.querySelector(".t").onclick = ()=>focusItem(o);
+      d.appendChild(row);
+    });
+    box.appendChild(d);
+  });
+  box.scrollTop = keepScroll;
+}
+function drawOverall(){
+  const c = counts(ALL), pct = c.t ? Math.round(c.d/c.t*100) : 0;
+  $("obar").style.width = pct+"%";
+  $("otext").textContent = `${c.d}/${c.t} found · ${pct}%`;
+  drawCats();
+}
+function drawOff(){
+  const box = $("offmap"); box.innerHTML = "<span>Underground / DLC (no pin on this map):</span>";
+  OFF.forEach(id=>{
     const r = R.find(x=>x.id===id); if(!r) return;
-    const el = pinEl(r);
-    el.addEventListener("click",()=>{sel=r.id;render();});
-    side.appendChild(el);
+    const c = counts(ALL.filter(o=>o.r===r));
+    const b = document.createElement("button");
+    b.textContent = `${r.name.replace(/ \(.*\)/,"")} ${c.d}/${c.t}`;
+    b.onclick = ()=>{ openR.add(r.id); drawList(); const el=$("reg-"+r.id); if(el) el.scrollIntoView({block:"start"}); };
+    box.appendChild(b);
   });
 }
-function applyView(){
-  const real = view==="real";
-  document.getElementById("real").style.display = real ? "" : "none";
-  document.getElementById("map").style.display = real ? "none" : "";
-  document.getElementById("vReal").classList.toggle("on",real);
-  document.getElementById("vSchem").classList.toggle("on",!real);
-  document.getElementById("vEdit").classList.toggle("on",editing);
-  document.getElementById("real").classList.toggle("editing",editing);
-  document.getElementById("stage").style.display = mapOk ? "" : "none";
-  document.getElementById("nomap").style.display = mapOk ? "none" : "block";
-}
-const mapimg = document.getElementById("mapimg");
-mapimg.onload = ()=>{ mapOk = true; applyView(); };
-mapimg.onerror = ()=>{ mapOk = false; applyView(); };
-mapOk = mapimg.complete && mapimg.naturalWidth>0;
-document.getElementById("vReal").onclick = ()=>{ view="real"; try{localStorage.setItem("er-view",view);}catch(e){} applyView(); };
-document.getElementById("vSchem").onclick = ()=>{ view="schem"; try{localStorage.setItem("er-view",view);}catch(e){} applyView(); };
-document.getElementById("vEdit").onclick = ()=>{
-  editing = !editing; applyView();
-};
 
-function render(){ drawMap(); drawReal(); drawPanel(); drawOverall(); applyView(); }
+// ---------- controls ----------
+$("q").addEventListener("input", e=>{ search = e.target.value.trim().toLowerCase(); drawList(); drawMarkers(); });
+$("hideFound").onclick = e=>{ hideFound=!hideFound; e.currentTarget.classList.toggle("on",hideFound); drawList(); drawMarkers(); };
+$("edit").onclick = e=>{ editing=!editing; e.currentTarget.classList.toggle("on",editing); vp.classList.toggle("editing",editing); closePop(); };
+$("openAll").onclick = e=>{
+  const open = e.currentTarget.dataset.open!=="1";
+  e.currentTarget.dataset.open = open?"1":"0"; e.currentTarget.textContent = open?"Collapse all":"Expand all";
+  R.forEach(r=>{ if(open) openR.add(r.id); else openR.delete(r.id); }); drawList();
+};
+$("reset").onclick = ()=>{ if(confirm("Reset all found items? (marker positions are kept)")){ done={}; saveDone(); drawAll(); } };
+$("exp").onclick = ()=>{
+  const s = JSON.stringify({v:2, done, pos});
+  if (navigator.clipboard) navigator.clipboard.writeText(s).then(()=>alert("Progress copied to clipboard."),()=>prompt("Copy:",s)); else prompt("Copy:",s);
+};
+$("imp").onclick = ()=>{
+  const s = prompt("Paste exported progress:"); if(!s) return;
+  try{
+    const o = JSON.parse(s);
+    if (o && o.v===2){ done = o.done||{}; pos = o.pos||{}; } else if (o && typeof o==="object"){ done = o; }
+    saveDone(); savePos(); drawAll();
+  }catch(e){ alert("Invalid data."); }
+};
+vp.addEventListener("click", e=>{ if (!e.target.closest(".mk") && moved<=4) closePop(); });
+document.addEventListener("keydown", e=>{ if (e.key==="Escape") closePop(); });
 
-// ---- IO ------------------------------------------------------------
-document.getElementById("reset").onclick=()=>{ if(confirm("Reset all progress?")){done={};save();render();} };
-document.getElementById("exp").onclick=()=>{
-  const s = JSON.stringify(done);
-  navigator.clipboard?.writeText(s).then(()=>alert("Progress copied to clipboard."),()=>prompt("Copy:",s));
-  if(!navigator.clipboard) prompt("Copy:",s);
-};
-document.getElementById("imp").onclick=()=>{
-  const s = prompt("Paste exported progress:");
-  if(!s) return;
-  try{ const o=JSON.parse(s); if(o&&typeof o==="object"){done=o;save();render();} }catch(e){ alert("Invalid data."); }
-};
-render();
+const img = $("mapimg");
+const imgState = ok=>{ $("nomap").style.display = ok?"none":"flex"; };
+img.onload = ()=>{ imgState(true); fit(); };
+img.onerror = ()=>imgState(false);
+
+function drawAll(){ drawMarkers(); drawList(); drawOverall(); drawOff(); }
+fit(); drawAll();
+if (img.complete) imgState(img.naturalWidth>0);
 </script>
 </body>
 </html>
